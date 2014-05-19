@@ -1,5 +1,4 @@
 import time
-import pycurl
 import urllib2
 import urllib
 import json
@@ -11,12 +10,12 @@ pvo_host= "pvoutput.org"
 
 pvo_key = "" 
 pvo_systemid = ""                                  # Your PVoutput system ID here
+pvo_statusInterval = 5                                  # Your PVoutput status interval - normally 5, 10 (default) or 15
 
 sgDeviceId = ""
 sgUserId = ""
+apiDelay = 1 # time to delay after API calls
 
-# This class shamelessly sourced from:
-# https://github.com/blebo/pv/blob/master/pv/pvoutput.py
 class Connection():
 	def __init__(self, api_key, system_id, host):
 		self.host = host
@@ -228,69 +227,69 @@ pvoutz = Connection(pvo_key, pvo_systemid, pvo_host)
 lastUpdate = 0
 
 while True:
-	# get stuff from sungrow
-	eOut = getSolarEnergyOutput()
-	garbage, temps = getSolarTemps()
-	garbage, eDay = getSolarETotal()
-	garbage, vdc1 = getSolarVDC1()
-	garbage, vdc2 = getSolarVDC2()
+		# get stuff from sungrow
+		eOut = getSolarEnergyOutput()
+		garbage, temps = getSolarTemps()
+		garbage, eDay = getSolarETotal()
+		garbage, vdc1 = getSolarVDC1()
+		garbage, vdc2 = getSolarVDC2()
 
-	if(eOut != False):
-		
-		# split times and powah
-		times, eOut = eOut
-
-		# find current record number
-		lastIndex = 0
-		for (i, item) in enumerate(eOut):
-			if(item != None):
-				lastIndex = i
-
-		# find first update for the set
-		firstIndex = 0
-		for (i, item) in enumerate(eOut):
-			if(item != None):
-				firstIndex = i + 1
-				break
-
-		# push index to the last valid thingy for today, only on first run
-		if(lastUpdate == 0):
-			PVOStatus = pvoutz.get_status()
-			print "Getting current status...."
-			time.sleep(61) # api limit non-fuck
-			date = PVOStatus.split(",")[0]
-			timez = PVOStatus.split(",")[1]
-			if(date == time.strftime("%Y%m%d")):
-				lastUpdate = times.index(timez)
-
-	    # sanity, on first run through we set last update to the first value
-		if((lastUpdate == 0) or (lastUpdate > lastIndex)):
-			lastUpdate = firstIndex
-			print "resetting for new day or first run"
-
-		for x in range(lastUpdate, lastIndex+1):
-			#grab current values of interest
-			powerTime = times[x]
-			powerOut = eOut[x]
-			cumulative = eDay[x]
-			temp = temps[x]
-			vdc = (vdc1[x] + vdc2[x])/2
-
-			# show console output
-			print "Time: " + str(powerTime) + " KW: " + str(powerOut) + " e-day: " + str(cumulative) + " temp: " + str(temp) + " vdc: " + str(vdc)
+		if(eOut != False):
 			
-			# update pvoutput
-			if(powerOut and cumulative): # make sure that we have actual values...
-				pvoutz.add_status(time.strftime("%Y%m%d"), powerTime, power_exp=powerOut * 1000, energy_exp=cumulative * 1000, temp=str(temp), vdc=str(vdc))
-				# dont fuck up API limits
-				time.sleep(61)
+			# split times and powah
+			times, eOut = eOut
 
+			# find current record number
+			lastIndex = 0
+			for (i, item) in enumerate(eOut):
+				if(item != None):
+					lastIndex = i + 1
+
+			# find first update for the set
+			firstIndex = 0
+			for (i, item) in enumerate(eOut):
+				if(item != None):
+					firstIndex = i + 1
+					break
+
+			# push index to the last valid thingy for today, only on first run
+			if(lastUpdate == 0):
+				PVOStatus = pvoutz.get_status()
+				print "Getting current status...."
+				time.sleep(apiDelay) # api limit non-fuck
+				date = PVOStatus.split(",")[0]
+				timez = PVOStatus.split(",")[1]
+				if(date == time.strftime("%Y%m%d")):
+					lastUpdate = times.index(timez)
+
+		    # sanity, on first run through we set last update to the first value
+			if((lastUpdate == 0) or (lastUpdate > lastIndex)):
+				lastUpdate = firstIndex
+				print "resetting for new day or first run"
+
+			for x in range(lastUpdate, lastIndex):
+				#grab current values of interest
+				powerTime = times[x]
+				powerOut = eOut[x]
+				cumulative = eDay[x]
+				temp = temps[x]
+				vdc = (vdc1[x] + vdc2[x])/2
+
+				# show console output
+				print "Time: " + str(powerTime) + " KW: " + str(powerOut) + " e-day: " + str(cumulative) + " temp: " + str(temp) + " vdc: " + str(vdc)
+				
+				# update pvoutput
+				if(powerOut and cumulative): # make sure that we have actual values...
+					pvoutz.add_status(time.strftime("%Y%m%d"), powerTime, power_exp=powerOut * 1000, energy_exp=cumulative * 1000, temp=str(temp), vdc=str(vdc))
+					# dont fuck up API limits
+					time.sleep(apiDelay)
+
+				
 			
-		
-		# update lastUpdate value
-		lastUpdate = lastIndex
-	else:
-		print "aint no data.. make the sun come up"
+			# update lastUpdate value
+			lastUpdate = lastIndex
+		else:
+			print "aint no data bitch.. make the sun come up"
 
-	time.sleep(120)
-	print "waiting for new data..."
+		time.sleep(3)
+		print "waiting for new data..."
