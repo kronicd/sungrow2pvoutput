@@ -15,6 +15,8 @@ pvo_systemid = ""                                  # Your PVoutput system ID her
 sgDeviceId = ""
 sgUserId = ""
 
+# This class shamelessly sourced from:
+# https://github.com/blebo/pv/blob/master/pv/pvoutput.py
 class Connection():
 	def __init__(self, api_key, system_id, host):
 		self.host = host
