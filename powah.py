@@ -14,6 +14,7 @@ pvo_statusInterval = 5                                  # Your PVoutput status i
 
 sgDeviceId = ""
 sgUserId = ""
+sgPlantId = ""
 apiDelay = 61 # time to delay after API calls
 
 class Connection():
@@ -149,7 +150,7 @@ def getSolarEnergyOutput():
 	start = time.strftime("%Y%m%d") + "00"
 	end = time.strftime("%Y%m%d") + "23"
 
-	response = urllib2.urlopen('http://www.solarinfobank.com/aapp/PlantDayChart?pid=1284&startYYYYMMDDHH='+start+'&endYYYYMMDDHH='+end+'&chartType=line&lan=en-us')
+	response = urllib2.urlopen('http://www.solarinfobank.com/aapp/PlantDayChart?pid='+sgPlantId+'&startYYYYMMDDHH='+start+'&endYYYYMMDDHH='+end+'&chartType=line&lan=en-us')
 	webz = response.read()
 
 	stuff  = json.loads(webz)
