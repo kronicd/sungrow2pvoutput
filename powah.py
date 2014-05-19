@@ -268,7 +268,7 @@ while True:
 			lastUpdate = firstIndex
 			print "resetting for new day or first run"
 
-		for x in range(lastUpdate, lastIndex):
+		for x in range(lastUpdate, lastIndex+1):
 			#grab current values of interest
 			powerTime = times[x]
 			powerOut = eOut[x]
