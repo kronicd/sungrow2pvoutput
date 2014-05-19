@@ -14,7 +14,7 @@ pvo_statusInterval = 5                                  # Your PVoutput status i
 
 sgDeviceId = ""
 sgUserId = ""
-apiDelay = 1 # time to delay after API calls
+apiDelay = 61 # time to delay after API calls
 
 class Connection():
 	def __init__(self, api_key, system_id, host):
@@ -291,5 +291,5 @@ while True:
 		else:
 			print "aint no data bitch.. make the sun come up"
 
-		time.sleep(3)
+		time.sleep(300)
 		print "waiting for new data..."
