@@ -5,6 +5,7 @@ import json
 from StringIO import StringIO    
 import sys
 import httplib
+import math
 
 pvo_host= "pvoutput.org"
 
@@ -12,10 +13,12 @@ pvo_key = ""
 pvo_systemid = ""                                  # Your PVoutput system ID here
 pvo_statusInterval = 5                                  # Your PVoutput status interval - normally 5, 10 (default) or 15
 
+# Your solar grow IDs, you're on your own here. 
+# Fiddle with the solargrow web interface till you get them
 sgDeviceId = ""
 sgUserId = ""
 sgPlantId = ""
-apiDelay = 61 # time to delay after API calls
+apiDelay = 1 # time to delay after API calls
 
 class Connection():
 	def __init__(self, api_key, system_id, host):
@@ -228,14 +231,16 @@ pvoutz = Connection(pvo_key, pvo_systemid, pvo_host)
 lastUpdate = 0
 
 while True:
+	try:
 		# get stuff from sungrow
 		eOut = getSolarEnergyOutput()
-		garbage, temps = getSolarTemps()
-		garbage, eDay = getSolarETotal()
-		garbage, vdc1 = getSolarVDC1()
-		garbage, vdc2 = getSolarVDC2()
 
 		if(eOut != False):
+
+			garbage, temps = getSolarTemps()
+			garbage, eDay = getSolarETotal()
+			garbage, vdc1 = getSolarVDC1()
+			garbage, vdc2 = getSolarVDC2()
 			
 			# split times and powah
 			times, eOut = eOut
@@ -274,14 +279,25 @@ while True:
 				powerOut = eOut[x]
 				cumulative = eDay[x]
 				temp = temps[x]
+				if(not vdc1[x]):
+					vdc1[x] = 0
+				if(not vdc2[x]):
+					vdc2[x] = 0
 				vdc = (vdc1[x] + vdc2[x])/2
 
 				# show console output
 				print "Time: " + str(powerTime) + " KW: " + str(powerOut) + " e-day: " + str(cumulative) + " temp: " + str(temp) + " vdc: " + str(vdc)
-				
-				# update pvoutput
-				if(powerOut and cumulative): # make sure that we have actual values...
-					pvoutz.add_status(time.strftime("%Y%m%d"), powerTime, power_exp=powerOut * 1000, energy_exp=cumulative * 1000, temp=str(temp), vdc=str(vdc))
+
+				# some checks here to make sure the pvoutput API will be happy
+				if(powerOut != None and cumulative != None):
+					if(cumulative == 0 and powerOut == 0):
+						print "Not updating PVOutput, both zero..."
+					elif(cumulative == 0):
+						pvoutz.add_status(time.strftime("%Y%m%d"), powerTime, power_exp=powerOut * 1000, temp=str(temp), vdc=str(vdc))
+					elif(powerOut == 0):
+						pvoutz.add_status(time.strftime("%Y%m%d"), powerTime, energy_exp=cumulative * 1000, temp=str(temp), vdc=str(vdc))
+					else:
+						pvoutz.add_status(time.strftime("%Y%m%d"), powerTime, power_exp=powerOut * 1000, energy_exp=cumulative * 1000, temp=str(temp), vdc=str(vdc))
 					# dont fuck up API limits
 					time.sleep(apiDelay)
 
@@ -292,5 +308,11 @@ while True:
 		else:
 			print "aint no data bitch.. make the sun come up"
 
-		time.sleep(300)
 		print "waiting for new data..."
+		time.sleep(300)
+	except urllib2.URLError as e:
+		print "One of the web servers is dead, sleeping for a bit"
+		time.sleep(300)
+	except StandardError as e:
+		print "something went bad... lets take a nap"
+		time.sleep(300)
